@@ -96,3 +96,15 @@ func (pt *Point) Multiply(n *big.Int) *Point {
 
 	return Q
 }
+
+func PointSum(points []*Point) (*Point, error) {
+	var sum *Point
+	var err error
+	for _, pt := range points {
+		sum, err = sum.Add(pt)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return sum, nil
+}
