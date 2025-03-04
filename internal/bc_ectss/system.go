@@ -1,18 +1,18 @@
-package bcectss
+package bc_ectss
 
 import (
+	"crypto/sha256"
 	"math/big"
 
 	"github.com/jukuly/honours_project/internal/elliptic_curve"
 )
 
 type System struct {
-	curve     *elliptic_curve.EllipticCurve
 	G         *elliptic_curve.Point
-	q         *big.Int
+	Order     *big.Int
 	Users     []*node
 	threshold int
-	Q         *elliptic_curve.Point
+	PublicKey *elliptic_curve.Point
 }
 
 var sys *System
@@ -24,12 +24,21 @@ func GetSystem() *System {
 	return sys
 }
 
-func (s *System) SetQ() *elliptic_curve.Point {
-	s.Q = nil
+func Hash(plain *big.Int) *big.Int {
+	hash := sha256.New()
+	hash.Write(plain.Bytes())
+
+	var digest *big.Int
+	digest.SetBytes(hash.Sum(nil))
+	return digest.Mod(digest, GetSystem().Order)
+}
+
+func (s *System) SetPublicKey() *elliptic_curve.Point {
+	s.PublicKey = nil
 
 	for _, user := range s.Users {
-		s.Q, _ = s.Q.Add(user.eta[0])
+		s.PublicKey, _ = s.PublicKey.Add(user.eta[0])
 	}
 
-	return s.Q
+	return s.PublicKey
 }

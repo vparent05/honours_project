@@ -1,4 +1,4 @@
-package bcectss
+package bc_ectss
 
 import (
 	"crypto/rand"
@@ -17,9 +17,9 @@ type node struct {
 }
 
 type Signature struct {
-	point *elliptic_curve.Point
-	l     *big.Int
-	beta  *big.Int
+	Point *elliptic_curve.Point
+	L     *big.Int
+	Beta  *big.Int
 }
 
 func NewNode(id int) *node {
@@ -28,7 +28,7 @@ func NewNode(id int) *node {
 	node.a = make([]*big.Int, GetSystem().threshold)
 
 	for i := 0; i < GetSystem().threshold; i++ {
-		node.a[i], _ = rand.Int(rand.Reader, GetSystem().q.Sub(GetSystem().q, big.NewInt(1)))
+		node.a[i], _ = rand.Int(rand.Reader, GetSystem().Order.Sub(GetSystem().Order, big.NewInt(1)))
 		node.a[i].Add(node.a[i], big.NewInt(1))
 	}
 
@@ -44,9 +44,9 @@ func (n *node) f(x *big.Int) *big.Int {
 	res := big.NewInt(0)
 	var temp *big.Int
 	for i := 0; i < len(n.a); i++ {
-		res.Add(res, temp.Mul(n.a[i], temp.Exp(x, big.NewInt(int64(i)), GetSystem().q)))
+		res.Add(res, temp.Mul(n.a[i], temp.Exp(x, big.NewInt(int64(i)), GetSystem().Order)))
 	}
-	return res.Mod(res, GetSystem().q)
+	return res.Mod(res, GetSystem().Order)
 }
 
 func (n *node) Chi() *big.Int {
@@ -58,9 +58,9 @@ func (n *node) Chi() *big.Int {
 			continue
 		}
 		chi.Mul(chi, temp.Neg(id_j))
-		chi.Mul(chi, temp.ModInverse(temp.Sub(n.id, id_j), GetSystem().q))
+		chi.Mul(chi, temp.ModInverse(temp.Sub(n.id, id_j), GetSystem().Order))
 	}
-	return chi.Mod(chi, GetSystem().q)
+	return chi.Mod(chi, GetSystem().Order)
 }
 
 func (n *node) SetKeys() error {
@@ -87,7 +87,7 @@ func (n_i *node) verifySecretShare(n_j *node) bool {
 	rhs := make([]*elliptic_curve.Point, GetSystem().threshold)
 	var temp *big.Int
 	for i := 0; i < GetSystem().threshold; i++ {
-		n_j.eta[i].Multiply(temp.Exp(n_i.id, big.NewInt(int64(i)), GetSystem().q))
+		n_j.eta[i].Multiply(temp.Exp(n_i.id, big.NewInt(int64(i)), GetSystem().Order))
 	}
 	rhsSum, _ := elliptic_curve.PointSum(rhs)
 
@@ -95,27 +95,27 @@ func (n_i *node) verifySecretShare(n_j *node) bool {
 }
 
 func (n *node) GetPartialSignature(message *big.Int) *Signature {
-	k, _ := rand.Int(rand.Reader, GetSystem().q.Sub(GetSystem().q, big.NewInt(1)))
+	k, _ := rand.Int(rand.Reader, GetSystem().Order.Sub(GetSystem().Order, big.NewInt(1)))
 	k.Add(k, big.NewInt(1))
 
-	var e *big.Int
+	e := Hash(message)
 
 	point := GetSystem().G.Multiply(k)
 
-	r := point.X.Mod(point.X, GetSystem().q)
+	r := point.X.Mod(point.X, GetSystem().Order)
 	if r.Cmp(big.NewInt(0)) == 0 {
 		r = big.NewInt(1)
 	}
 
-	beta, _ := rand.Int(rand.Reader, GetSystem().q.Sub(GetSystem().q, big.NewInt(1)))
+	beta, _ := rand.Int(rand.Reader, GetSystem().Order.Sub(GetSystem().Order, big.NewInt(1)))
 	beta.Add(beta, big.NewInt(1))
 
 	var temp *big.Int
-	alpha := temp.Mul(temp.Sub(k, temp.Mul(beta, message)), temp.ModInverse(r, GetSystem().q))
-	alpha.Mod(alpha, GetSystem().q)
+	alpha := temp.Mul(temp.Sub(k, temp.Mul(beta, message)), temp.ModInverse(r, GetSystem().Order))
+	alpha.Mod(alpha, GetSystem().Order)
 
 	chi := n.Chi()
-	l := temp.Mod(temp.Add(temp.Mul(alpha, r), temp.Mul(temp.Mul(e, chi), n.sk)), GetSystem().q)
+	l := temp.Mod(temp.Add(temp.Mul(alpha, r), temp.Mul(temp.Mul(e, chi), n.sk)), GetSystem().Order)
 
 	return &Signature{point, l, beta}
 }
@@ -123,12 +123,34 @@ func (n *node) GetPartialSignature(message *big.Int) *Signature {
 func (n *node) VerifyPartialSignature(message *big.Int, sig *Signature) bool {
 
 	var temp *big.Int
-	gamma := temp.Mod(temp.Add(sig.l, temp.Mul(sig.beta, message)), GetSystem().q)
+	gamma := temp.Mod(temp.Add(sig.L, temp.Mul(sig.Beta, message)), GetSystem().Order)
 
-	var e *big.Int
+	e := Hash(message)
 
 	chi := n.Chi()
 	point, _ := GetSystem().G.Multiply(gamma).Add(n.pk.Multiply(e.Mul(e, chi)).Negate())
 
-	return point.Equals(sig.point)
+	return point.Equals(sig.Point)
+}
+
+func GetSignature(partialSignatures []*Signature) *Signature {
+	l := big.NewInt(0)
+	beta := big.NewInt(0)
+	var point *elliptic_curve.Point
+	for _, sig := range partialSignatures {
+		l.Mod(l.Add(l, sig.L), GetSystem().Order)
+		beta.Mod(beta.Add(beta, sig.Beta), GetSystem().Order)
+		point.Add(sig.Point)
+	}
+	return &Signature{point, l, beta}
+}
+
+func VerifySignature(message *big.Int, sig *Signature) bool {
+	var temp *big.Int
+	gamma := temp.Mod(temp.Add(sig.L, temp.Mul(sig.Beta, message)), GetSystem().Order)
+
+	e := Hash(message)
+	point, _ := GetSystem().G.Multiply(gamma).Add(GetSystem().PublicKey.Multiply(e).Negate())
+
+	return point.Equals(sig.Point)
 }
