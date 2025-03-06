@@ -11,11 +11,15 @@ type System struct {
 	G         *elliptic_curve.Point
 	Order     *big.Int
 	Users     []*node
-	threshold int
+	Threshold int
 	PublicKey *elliptic_curve.Point
 }
 
 var sys *System
+
+func SetSystem(newSys *System) {
+	sys = newSys
+}
 
 func GetSystem() *System {
 	if sys == nil {

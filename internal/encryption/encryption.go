@@ -33,11 +33,11 @@ func Encrypt(plaintext *elliptic_curve.Point, tag *big.Int) (*Ciphertext, error)
 }
 
 func Decrypt(ciphertext *Ciphertext, signature *bc_ectss.Signature) (*elliptic_curve.Point, error) {
-	secondTerm := make([]*elliptic_curve.Point, 3)
-	secondTerm[0] = signature.Point.Multiply(ciphertext.c2)
-	secondTerm[1] = ciphertext.c3.Multiply(signature.L)
-	secondTerm[2] = ciphertext.c4.Multiply(signature.Beta)
-	dotProduct, err := elliptic_curve.PointSum(secondTerm)
+	dotProduct, err := elliptic_curve.PointSum([]*elliptic_curve.Point{
+		signature.Point.Multiply(ciphertext.c2),
+		ciphertext.c3.Multiply(signature.L),
+		ciphertext.c4.Multiply(signature.Beta),
+	})
 	if err != nil {
 		return nil, errors.New("invalid ciphertext")
 	}

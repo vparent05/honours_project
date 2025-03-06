@@ -24,8 +24,8 @@ func (pt *Point) Equals(other *Point) bool {
 }
 
 func (ec *EllipticCurve) Point(x, y *big.Int) (*Point, error) {
-	var z big.Int
-	if z.Exp(y, big.NewInt(2), ec.P) != z.Add(z.Add(z.Exp(x, big.NewInt(3), ec.P), z.Mul(ec.A, x)), ec.B) {
+	var temp big.Int
+	if temp.Exp(y, big.NewInt(2), ec.P) != temp.Add(temp.Add(temp.Exp(x, big.NewInt(3), ec.P), temp.Mul(ec.A, x)), ec.B) {
 		return nil, fmt.Errorf("point (%d, %d) is not on the curve", x, y)
 	}
 

@@ -25,15 +25,15 @@ type Signature struct {
 func NewNode(id int) *node {
 	node := node{}
 	node.id = big.NewInt(int64(id))
-	node.a = make([]*big.Int, GetSystem().threshold)
+	node.a = make([]*big.Int, GetSystem().Threshold)
 
-	for i := 0; i < GetSystem().threshold; i++ {
+	for i := 0; i < GetSystem().Threshold; i++ {
 		node.a[i], _ = rand.Int(rand.Reader, GetSystem().Order.Sub(GetSystem().Order, big.NewInt(1)))
 		node.a[i].Add(node.a[i], big.NewInt(1))
 	}
 
-	node.eta = make([]*elliptic_curve.Point, GetSystem().threshold)
-	for i := 0; i < GetSystem().threshold; i++ {
+	node.eta = make([]*elliptic_curve.Point, GetSystem().Threshold)
+	for i := 0; i < GetSystem().Threshold; i++ {
 		node.eta[i] = GetSystem().G.Multiply(node.a[i])
 	}
 
@@ -52,7 +52,7 @@ func (n *node) f(x *big.Int) *big.Int {
 func (n *node) Chi() *big.Int {
 	chi := big.NewInt(1)
 	var temp *big.Int
-	for i := 0; i < GetSystem().threshold; i++ {
+	for i := 0; i < GetSystem().Threshold; i++ {
 		id_j := GetSystem().Users[i].id
 		if id_j == n.id {
 			continue
@@ -84,9 +84,9 @@ func (n *node) SetKeys() error {
 
 // verify the secret share from node n_j to node n_i
 func (n_i *node) verifySecretShare(n_j *node) bool {
-	rhs := make([]*elliptic_curve.Point, GetSystem().threshold)
+	rhs := make([]*elliptic_curve.Point, GetSystem().Threshold)
 	var temp *big.Int
-	for i := 0; i < GetSystem().threshold; i++ {
+	for i := 0; i < GetSystem().Threshold; i++ {
 		n_j.eta[i].Multiply(temp.Exp(n_i.id, big.NewInt(int64(i)), GetSystem().Order))
 	}
 	rhsSum, _ := elliptic_curve.PointSum(rhs)
