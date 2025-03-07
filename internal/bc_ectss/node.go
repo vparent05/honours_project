@@ -23,26 +23,6 @@ type Signature struct {
 	Beta  *big.Int
 }
 
-func (sys *System) NewNode(id int) *node {
-	node := node{}
-	node.id = big.NewInt(int64(id))
-	node.a = make([]*big.Int, sys.Threshold)
-
-	for i := 0; i < sys.Threshold; i++ {
-		node.a[i], _ = rand.Int(rand.Reader, sys.Order.Sub(sys.Order, big.NewInt(1)))
-		node.a[i].Add(node.a[i], big.NewInt(1))
-	}
-
-	node.eta = make([]*elliptic_curve.Point, sys.Threshold)
-	for i := 0; i < sys.Threshold; i++ {
-		node.eta[i] = sys.G.Multiply(node.a[i])
-	}
-
-	node.system = sys
-
-	return &node
-}
-
 func (n *node) f(x *big.Int) *big.Int {
 	res := big.NewInt(0)
 	var temp *big.Int
@@ -105,7 +85,7 @@ func (n *node) GetPartialSignature(message *big.Int) *Signature {
 	k, _ := rand.Int(rand.Reader, n.system.Order.Sub(n.system.Order, big.NewInt(1)))
 	k.Add(k, big.NewInt(1))
 
-	e := n.system.Hash(message)
+	e := n.system.hash(message)
 
 	point := n.system.G.Multiply(k)
 
@@ -132,32 +112,10 @@ func (n *node) VerifyPartialSignature(message *big.Int, sig *Signature) bool {
 	var temp *big.Int
 	gamma := temp.Mod(temp.Add(sig.L, temp.Mul(sig.Beta, message)), n.system.Order)
 
-	e := n.system.Hash(message)
+	e := n.system.hash(message)
 
 	chi := n.Chi()
 	point, _ := n.system.G.Multiply(gamma).Add(n.pk.Multiply(e.Mul(e, chi)).Negate())
-
-	return point.Equals(sig.Point)
-}
-
-func (sys *System) GetSignature(partialSignatures []*Signature) *Signature {
-	l := big.NewInt(0)
-	beta := big.NewInt(0)
-	var point *elliptic_curve.Point
-	for _, sig := range partialSignatures {
-		l.Mod(l.Add(l, sig.L), sys.Order)
-		beta.Mod(beta.Add(beta, sig.Beta), sys.Order)
-		point.Add(sig.Point)
-	}
-	return &Signature{point, l, beta}
-}
-
-func (sys *System) VerifySignature(message *big.Int, sig *Signature) bool {
-	var temp *big.Int
-	gamma := temp.Mod(temp.Add(sig.L, temp.Mul(sig.Beta, message)), sys.Order)
-
-	e := sys.Hash(message)
-	point, _ := sys.G.Multiply(gamma).Add(sys.PublicKey.Multiply(e).Negate())
 
 	return point.Equals(sig.Point)
 }
