@@ -15,6 +15,8 @@ type Point struct {
 	infinity bool
 }
 
+var Infinity = &Point{nil, nil, nil, true}
+
 // y^2 = x^3 + ax + b (mod p)
 type EllipticCurve struct {
 	A *big.Int
@@ -37,10 +39,6 @@ func (ec *EllipticCurve) Point(x, y *big.Int) (*Point, error) {
 	return &Point{x.Mod(x, ec.P), y.Mod(y, ec.P), ec, false}, nil
 }
 
-func Infinity() *Point {
-	return &Point{nil, nil, nil, true}
-}
-
 func (pt *Point) Add(other *Point) (*Point, error) {
 	if pt.infinity {
 		return other, nil
@@ -53,7 +51,7 @@ func (pt *Point) Add(other *Point) (*Point, error) {
 	}
 
 	if pt.X.Cmp(other.X) == 0 && (pt.Y.Cmp(other.Y) != 0 || pt.Y.Cmp(big.NewInt(0)) == 0) {
-		return Infinity(), nil
+		return Infinity, nil
 	}
 
 	m := new(big.Int)
@@ -90,7 +88,7 @@ func (pt *Point) Negate() *Point {
 }
 
 func (pt *Point) Multiply(n *big.Int) *Point {
-	Q := Infinity()
+	Q := Infinity
 
 	n_copy := new(big.Int)
 	n_copy.SetBytes(n.Bytes())
@@ -113,7 +111,7 @@ func (pt *Point) Multiply(n *big.Int) *Point {
 }
 
 func PointSum(points []*Point) (*Point, error) {
-	sum := Infinity()
+	sum := Infinity
 	var err error
 	for _, pt := range points {
 		sum, err = sum.Add(pt)

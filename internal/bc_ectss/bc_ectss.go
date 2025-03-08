@@ -102,7 +102,7 @@ func (n *BCECTSS) SetPersonalKeys(shares []*big.Int) {
 }
 
 func (n *BCECTSS) SetSystemKey(eta0 []*elliptic_curve.Point) {
-	n.Q = elliptic_curve.Infinity()
+	n.Q = elliptic_curve.Infinity
 
 	for _, eta := range eta0 {
 		n.Q, _ = n.Q.Add(eta)
@@ -159,7 +159,7 @@ func (n *BCECTSS) VerifyPartialSignature(message *big.Int, sig *Signature, pk *e
 func (n *BCECTSS) CombineSignature(partialSignatures []*Signature) (*Signature, error) {
 	l := big.NewInt(0)
 	beta := big.NewInt(0)
-	point := elliptic_curve.Infinity()
+	point := elliptic_curve.Infinity
 
 	var err error
 	for _, sig := range partialSignatures {
