@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"math/big"
 
 	"github.com/jukuly/honours_project/internal/elliptic_curve"
@@ -71,8 +70,8 @@ func New(params *BCECTSS_Params, id *big.Int) *BCECTSS {
 
 func (n *BCECTSS) f(x *big.Int) *big.Int {
 	res := big.NewInt(0)
-	for i := range n.a {
-		res.Add(res, utils.PureMul(n.a[i], utils.PureExp(x, big.NewInt(int64(i)), n.Params.Order)))
+	for i, coeff := range n.a {
+		res.Add(res, utils.PureMul(coeff, utils.PureExp(x, big.NewInt(int64(i)), n.Params.Order)))
 	}
 
 	return res.Mod(res, n.Params.Order)
@@ -180,25 +179,22 @@ func (n *BCECTSS) VerifySignature(message *big.Int, sig *Signature) bool {
 	e := n.Params.hash(message)
 	point, _ := n.Params.G.Multiply(gamma).Add(n.Q.Multiply(e).Negate())
 
-	if !point.Equals(sig.Point) {
-		fmt.Printf("%v\n", point)
-		fmt.Printf("%v\n", sig.Point)
-	}
-
 	return point.Equals(sig.Point)
 }
 
-func (n *BCECTSS) Encrypt(plaintext *elliptic_curve.Point, tag *big.Int) (*Ciphertext, error) {
-	alpha, _ := rand.Int(rand.Reader, n.Params.Order)
+func (params *BCECTSS_Params) Encrypt(plaintext *elliptic_curve.Point, tag *big.Int, Q *elliptic_curve.Point) (*Ciphertext, error) {
+	alpha, _ := rand.Int(rand.Reader, params.Order)
 
-	c1, err := n.Q.Multiply(utils.PureMul(alpha, n.Params.hash(tag))).Add(plaintext)
+	e := params.hash(tag)
+
+	c1, err := Q.Multiply(utils.PureMul(alpha, e)).Add(plaintext)
 	if err != nil {
 		return nil, errors.New("plaintext is not on the system curve")
 	}
 
 	c2 := utils.PureNeg(alpha)
-	c3 := n.Params.G.Multiply(alpha)
-	c4 := n.Params.G.Multiply(utils.PureMul(alpha, n.Params.hash(tag)))
+	c3 := params.G.Multiply(alpha)
+	c4 := c3.Multiply(e)
 
 	return &Ciphertext{c1, c2, c3, c4}, nil
 }
