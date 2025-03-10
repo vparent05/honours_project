@@ -16,6 +16,19 @@ func StringToInt(str string) (*big.Int, error) {
 	return res, nil
 }
 
+// returns the lagrange coefficient modulo m of id_i
+func Chi(id_i *big.Int, ids []*big.Int, m *big.Int) *big.Int {
+	chi := big.NewInt(1)
+	for _, id := range ids {
+		if id.Cmp(id_i) == 0 {
+			continue
+		}
+		chi.Mul(chi, PureNeg(id))
+		chi.Mul(chi, PureModInverse(PureSub(id_i, id), m))
+	}
+	return chi.Mod(chi, m)
+}
+
 func PureAdd(x, y *big.Int) *big.Int {
 	return new(big.Int).Add(x, y)
 }

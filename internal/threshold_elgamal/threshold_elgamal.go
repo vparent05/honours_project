@@ -6,30 +6,13 @@ import (
 	"math/big"
 
 	"github.com/jukuly/honours_project/internal/elliptic_curve"
+	"github.com/jukuly/honours_project/internal/encryption"
 	"github.com/jukuly/honours_project/internal/utils"
 )
-
-type Elgamal_Params struct {
-	G         *elliptic_curve.Point
-	Order     *big.Int
-	Threshold int
-}
 
 type Ciphertext struct {
 	c1 *elliptic_curve.Point
 	c2 *elliptic_curve.Point
-}
-
-func (params *Elgamal_Params) chi(id_i *big.Int, ids []*big.Int) *big.Int {
-	chi := big.NewInt(1)
-	for _, id := range ids {
-		if id.Cmp(id_i) == 0 {
-			continue
-		}
-		chi.Mul(chi, utils.PureNeg(id))
-		chi.Mul(chi, utils.PureModInverse(utils.PureSub(id_i, id), params.Order))
-	}
-	return chi.Mod(chi, params.Order)
 }
 
 func f(coefficients []*big.Int, order *big.Int, x *big.Int) *big.Int {
@@ -41,11 +24,11 @@ func f(coefficients []*big.Int, order *big.Int, x *big.Int) *big.Int {
 	return res.Mod(res, order)
 }
 
-func (params *Elgamal_Params) personalPublicKey(sk *big.Int) *elliptic_curve.Point {
+func personalPublicKey(sk *big.Int, params *encryption.ECC_Params) *elliptic_curve.Point {
 	return params.G.Multiply(sk)
 }
 
-func (params *Elgamal_Params) GenerateKeys(ids []*big.Int) ([]*elliptic_curve.Point, []*big.Int, *elliptic_curve.Point) {
+func GenerateKeys(ids []*big.Int, params *encryption.ECC_Params) ([]*elliptic_curve.Point, []*big.Int, *elliptic_curve.Point) {
 	coefficients := make([]*big.Int, params.Threshold)
 	for i := range coefficients {
 		coefficients[i], _ = rand.Int(rand.Reader, params.Order)
@@ -58,12 +41,12 @@ func (params *Elgamal_Params) GenerateKeys(ids []*big.Int) ([]*elliptic_curve.Po
 
 	public := make([]*elliptic_curve.Point, len(ids))
 	for i := range public {
-		public[i] = params.personalPublicKey(private[i])
+		public[i] = personalPublicKey(private[i], params)
 	}
 
 	globalPublic := make([]*elliptic_curve.Point, len(ids))
 	for i := range globalPublic {
-		globalPublic[i] = public[i].Multiply(params.chi(ids[i], ids))
+		globalPublic[i] = public[i].Multiply(utils.Chi(ids[i], ids, params.Order))
 	}
 
 	globalPublicSum, _ := elliptic_curve.PointSum(globalPublic)
@@ -71,7 +54,7 @@ func (params *Elgamal_Params) GenerateKeys(ids []*big.Int) ([]*elliptic_curve.Po
 	return public, private, globalPublicSum
 }
 
-func (params *Elgamal_Params) Encrypt(plaintext *elliptic_curve.Point, publicKey *elliptic_curve.Point) (*Ciphertext, error) {
+func Encrypt(plaintext *elliptic_curve.Point, publicKey *elliptic_curve.Point, params *encryption.ECC_Params) (*Ciphertext, error) {
 	alpha, _ := rand.Int(rand.Reader, params.Order)
 
 	c1 := params.G.Multiply(alpha)
@@ -87,10 +70,10 @@ func PartialDecrypt(cipher *Ciphertext, sk *big.Int) *elliptic_curve.Point {
 	return cipher.c1.Multiply(sk)
 }
 
-func (params *Elgamal_Params) Decrypt(shares []*elliptic_curve.Point, cipher *Ciphertext, parties []*big.Int) (*elliptic_curve.Point, error) {
+func Decrypt(shares []*elliptic_curve.Point, cipher *Ciphertext, parties []*big.Int, params *encryption.ECC_Params) (*elliptic_curve.Point, error) {
 	c1_prime := make([]*elliptic_curve.Point, len(parties))
 	for i := range parties {
-		c1_prime[i] = shares[i].Multiply(params.chi(parties[i], parties))
+		c1_prime[i] = shares[i].Multiply(utils.Chi(parties[i], parties, params.Order))
 	}
 	c1_prime_sum, err := elliptic_curve.PointSum(c1_prime)
 	if err != nil {
